@@ -80,7 +80,7 @@ const EntityCrudPage = ({ config }) => {
     return () => {
       cancelled = true;
     };
-  }, [endpoint]);
+  }, [endpoint, optionSources]);
 
   const getOptionsFor = useCallback(
     (fieldConfig) => {
