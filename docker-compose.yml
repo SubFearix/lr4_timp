@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-security_db}
+      POSTGRES_USER: ${POSTGRES_USER:-security_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-security_pass}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-security_user} -d ${POSTGRES_DB:-security_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-security_user}:${POSTGRES_PASSWORD:-security_pass}@db:5432/${POSTGRES_DB:-security_db}
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-long-random-string}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@school-security.local}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  db_data:
